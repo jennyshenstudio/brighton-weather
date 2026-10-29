@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <title>Brighton Weather</title>
+
+  <style>
+    /* ------------------------------------------------------------------
+       Design tokens, following Apple's Human Interface Guidelines.
+       Colours are named by purpose (background, label...), not by look.
+       Dark mode follows the device setting; there is no switch on the page.
+       ------------------------------------------------------------------ */
+    :root {
+      color-scheme: light dark;
+
+      /* Light appearance */
+      --bg: #f2f2f7;                      /* grouped background */
+      --card: #ffffff;                    /* grouped content */
+      --label: #000000;                   /* primary text */
+      --label-secondary: rgba(60, 60, 67, 0.78);  /* stronger than Apple's 0.6, to reach 4.5:1 */
+      --separator: rgba(60, 60, 67, 0.29);
+      --accent: #0071e3;                  /* prominent button fill (white text 4.7:1) */
+      --accent-pressed: #0062c4;
+      --on-accent: #ffffff;
+      --link: #0066cc;
+      --error: #d70015;
+      --focus: #0071e3;
+
+      /* Spacing and shape */
+      --margin: 16px;                     /* page margin on small screens */
+      --gap: 20px;                        /* space between groups */
+      --radius: 20px;                     /* card corners */
+      --tap: 44px;                        /* smallest comfortable hit area */
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #000000;
+        --card: #1c1c1e;                  /* raised surfaces are lighter in dark mode */
+        --label: #ffffff;
+        --label-secondary: rgba(235, 235, 245, 0.6);
+        --separator: rgba(84, 84, 88, 0.65);
+        --accent: #0071e3;
+        --accent-pressed: #0a84ff;
+        --link: #2997ff;
+        --error: #ff6961;
+        --focus: #2997ff;
+      }
+    }
+
+    /* ------------------------------------------------------------------
+       Base. Sizes use rem so the text grows with the browser's text-size
+       setting, which is the web's version of Dynamic Type.
+       ------------------------------------------------------------------ */
+    * { box-sizing: border-box; }
+
+    html {
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--label);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+                   "Helvetica Neue", Helvetica, Arial, sans-serif;
+      font-size: 1.0625rem;               /* Body: 17 */
+      line-height: 1.3;
+      font-weight: 400;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    main {
+      max-width: 34rem;
+      margin: 0 auto;
+      padding: max(env(safe-area-inset-top), 24px) max(env(safe-area-inset-right), var(--margin))
+               max(env(safe-area-inset-bottom), 32px) max(env(safe-area-inset-left), var(--margin));
+      display: flex;
+      flex-direction: column;
+      gap: var(--gap);
+    }
+
+    a { color: var(--link); }
+
+    /* Shown on keyboard focus only, so it never clutters taps or clicks. */
+    :focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 3px;
+      border-radius: 6px;
+    }
+
+    /* ------------------------------------------------------------------
+       Header: the town is the Large Title (34).
+       ------------------------------------------------------------------ */
+    header h1 {
+      margin: 0;
+      font-size: 2.125rem;
+      line-height: 1.2;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+
+    /* ------------------------------------------------------------------
+       Current conditions: the one thing people came for, so it is the
+       largest and sits first.
+       ------------------------------------------------------------------ */
+    .current {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 28px 20px 24px;
+      text-align: center;
+    }
+
+    .current .temperature {
+      margin: 0;
+      font-size: clamp(4rem, 22vw, 6rem);  /* grows with the screen, never below 64 */
+      line-height: 1;
+      font-weight: 500;                    /* Medium: the guidelines advise against light weights */
+      letter-spacing: -0.02em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .current .conditions {
+      margin: 8px 0 0;
+      font-size: 1.25rem;                  /* Title 3: 20 */
+      line-height: 1.25;
+      font-weight: 600;
+    }
+
+    /* ------------------------------------------------------------------
+       Inset grouped list: a label on the left, its value on the right.
+       ------------------------------------------------------------------ */
+    .group {
+      margin: 0;
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 0 16px;
+    }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 16px;
+      min-height: var(--tap);
+      padding: 12px 0;
+    }
+
+    .row + .row { border-top: 1px solid var(--separator); }
+
+    .row dt { margin: 0; }
+    .row dd { margin: 0; color: var(--label-secondary); text-align: right; }
+
+    /* ------------------------------------------------------------------
+       Error message. It is text first, so it does not rely on colour.
+       ------------------------------------------------------------------ */
+    .message {
+      margin: 0;
+      padding: 12px 16px;
+      background: var(--card);
+      border-radius: var(--radius);
+      color: var(--error);
+      font-weight: 600;
+    }
+    .message:empty { display: none; }
+
+    /* ------------------------------------------------------------------
+       Refresh: the single prominent button on the page.
+       ------------------------------------------------------------------ */
+    .button {
+      appearance: none;
+      border: 0;
+      width: 100%;
+      min-height: 50px;
+      padding: 14px 20px;
+      border-radius: 999px;               /* capsule */
+      background: var(--accent);
+      color: var(--on-accent);
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.15s ease, background-color 0.15s ease, opacity 0.15s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Press state, so the button never feels unresponsive. */
+    .button:active { background: var(--accent-pressed); transform: scale(0.98); }
+
+    /* While a refresh runs the button shows progress and ignores presses. */
+    .button[aria-busy="true"] { opacity: 0.7; cursor: progress; }
+    .button[aria-busy="true"]::before {
+      content: "";
+      display: inline-block;
+      width: 0.9em;
+      height: 0.9em;
+      margin-right: 0.6em;
+      vertical-align: -0.1em;
+      border: 2px solid currentColor;
+      border-right-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ------------------------------------------------------------------
+       Footnotes (13): source link and credit.
+       ------------------------------------------------------------------ */
+    footer {
+      font-size: 0.8125rem;
+      line-height: 1.35;
+      color: var(--label-secondary);
+      padding: 0 16px;
+    }
+    footer p { margin: 0 0 8px; }
+    footer a { overflow-wrap: anywhere; }
+
+    /* Values ease in when they change. */
+    .fade { animation: fade 0.3s ease; }
+    @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+    /* Respect people who turn motion down in their device settings. */
+    @media (prefers-reduced-motion: reduce) {
+      .button, .fade { transition: none; animation: none; }
+      .button[aria-busy="true"]::before { animation-duration: 2.4s; }
+    }
+
+    /* Wider screens: a little more room, same layout. */
+    @media (min-width: 600px) {
+      :root { --margin: 24px; --gap: 24px; }
+      .current { padding: 40px 24px 32px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1 id="town">Brighton</h1>
+    </header>
+
+    <!-- aria-live makes screen readers announce the new values after a refresh -->
+    <section class="current" aria-label="Current weather" aria-live="polite">
+      <p class="temperature" id="temperature">&ndash;</p>
+      <p class="conditions" id="weather-code">Loading&hellip;</p>
+    </section>
+
+    <dl class="group">
+      <div class="row">
+        <dt>Updated</dt>
+        <dd id="time">&ndash;</dd>
+      </div>
+    </dl>
+
+    <p class="message" id="message" role="alert"></p>
+
+    <button class="button" id="refresh-button" type="button">Refresh data</button>
+
+    <footer>
+      <p>Forecast data: <a id="url-link" href="#" target="_blank" rel="noopener"></a></p>
+      <p>Weather data by <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a></p>
+    </footer>
+  </main>
+
+  <script>
+    // Settings for the page, kept in one place.
+    // Open-Meteo needs no key, but this is where a key would go.
+    // (A key in a web page can still be seen in DevTools, so real secret keys need a server.)
+    const CONFIG = {
+      town: "Brighton",
+      latitude: 50.8284,
+      longitude: -0.1395
+      // apiKey: "your-key-here"
+    };
+
+    // Builds the Open-Meteo forecast URL by joining strings with +.
+    function buildUrl() {
+      return "https://api.open-meteo.com/v1/forecast" +
+        "?latitude=" + CONFIG.latitude +
+        "&longitude=" + CONFIG.longitude +
+        "&current=temperature_2m,weather_code,wind_speed_10m" +
+        "&timezone=Europe%2FLondon";
+    }
+
+    // Shows the town name and the URL (as a link) on the page.
+    function showSetup() {
+      const url = buildUrl();
+      document.getElementById("town").textContent = CONFIG.town;
+
+      const link = document.getElementById("url-link");
+      link.href = url;
+      link.textContent = url;
+    }
+
+    // Turns a date like 2026-10-28T12:45 into 28/10/2026 12:45.
+    // split cuts a string into pieces at a chosen character.
+    function formatDate(isoText) {
+      const parts = isoText.split("T");        // ["2026-10-28", "12:45"]
+      const dateParts = parts[0].split("-");   // ["2026", "10", "28"]
+      return dateParts[2] + "/" + dateParts[1] + "/" + dateParts[0] + " " + parts[1];
+    }
+
+    // Turns a weather code number into words.
+    function describeWeather(code) {
+      if (code === 0) {
+        return "Clear sky";
+      } else if (code >= 1 && code <= 3) {
+        return "Cloudy";
+      } else if (code >= 45 && code <= 48) {
+        return "Fog";
+      } else if (code >= 51 && code <= 67) {
+        return "Rain";
+      } else if (code >= 71 && code <= 77) {
+        return "Snow";
+      } else if (code >= 80 && code <= 82) {
+        return "Rain showers";
+      } else if (code >= 95) {
+        return "Thunderstorm";
+      } else {
+        return "Unknown";
+      }
+    }
+
+    // Puts text into an element and plays a short fade so the change is noticed.
+    function setText(id, text) {
+      const element = document.getElementById(id);
+      element.textContent = text;
+      element.classList.remove("fade");
+      void element.offsetWidth;                // lets the browser restart the animation
+      element.classList.add("fade");
+    }
+
+    // Picks the weather code, temperature and time out of the data and shows each one,
+    // using describeWeather and formatDate to make them easy to read.
+    function showWeather(data) {
+      setText("weather-code", describeWeather(data.current.weather_code));
+      setText("temperature", data.current.temperature_2m + "°C");
+      setText("time", formatDate(data.current.time));
+    }
+
+    // Shows or hides the busy state on the button while a request is running.
+    function setBusy(isBusy) {
+      const button = document.getElementById("refresh-button");
+      button.disabled = isBusy;
+      button.textContent = isBusy ? "Refreshing" : "Refresh data";
+      button.setAttribute("aria-busy", isBusy ? "true" : "false");
+    }
+
+    // Fetches the weather and passes it to showWeather.
+    // "try" runs the risky steps; if any fails, "catch" shows an error message instead.
+    // "finally" always runs at the end, so the button never gets stuck.
+    async function loadWeather() {
+      const message = document.getElementById("message");
+      message.textContent = "";
+      setBusy(true);
+
+      try {
+        const response = await fetch(buildUrl());
+        if (!response.ok) {
+          throw new Error("HTTP " + response.status);
+        }
+        const data = await response.json();
+        showWeather(data);
+      } catch (error) {
+        message.textContent = "Could not load the weather.";
+        if (document.getElementById("temperature").textContent === "–") {
+          document.getElementById("weather-code").textContent = "Unavailable";
+        }
+        console.error(error);
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    // The button calls the same loadWeather function (no copy).
+    document.getElementById("refresh-button").addEventListener("click", loadWeather);
+
+    // Run when the page loads.
+    showSetup();
+    loadWeather();
+  </script>
+</body>
+</html>

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Brighton Weather - Stage 3</title>
+</head>
+<body>
+  <h1>Weather in <span id="town"></span></h1>
+
+  <p>Forecast URL: <a id="url-link" href="#" target="_blank" rel="noopener"></a></p>
+
+  <p>Weather code: <span id="weather-code"></span></p>
+  <p>Temperature: <span id="temperature"></span></p>
+  <p>Time: <span id="time"></span></p>
+
+  <p id="message"></p>
+
+  <p>Weather data by <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a></p>
+
+  <script>
+    // Settings for the page, kept in one place.
+    // Open-Meteo needs no key, but this is where a key would go.
+    // (A key in a web page can still be seen in DevTools, so real secret keys need a server.)
+    const CONFIG = {
+      town: "Brighton",
+      latitude: 50.8284,
+      longitude: -0.1395
+      // apiKey: "your-key-here"
+    };
+
+    // Builds the Open-Meteo forecast URL by joining strings with +.
+    function buildUrl() {
+      return "https://api.open-meteo.com/v1/forecast" +
+        "?latitude=" + CONFIG.latitude +
+        "&longitude=" + CONFIG.longitude +
+        "&current=temperature_2m,weather_code,wind_speed_10m" +
+        "&timezone=Europe%2FLondon";
+    }
+
+    // Shows the town name and the URL (as a link) on the page.
+    function showSetup() {
+      const url = buildUrl();
+      document.getElementById("town").textContent = CONFIG.town;
+
+      const link = document.getElementById("url-link");
+      link.href = url;
+      link.textContent = url;
+    }
+
+    // Picks the weather code, temperature and time out of the data and shows each one.
+    // The values are shown exactly as they arrive, with no formatting yet.
+    function showWeather(data) {
+      document.getElementById("weather-code").textContent = data.current.weather_code;
+      document.getElementById("temperature").textContent = data.current.temperature_2m;
+      document.getElementById("time").textContent = data.current.time;
+    }
+
+    // Fetches the weather and passes it to showWeather.
+    // "try" runs the risky steps; if any fails, "catch" shows an error message instead.
+    async function loadWeather() {
+      const message = document.getElementById("message");
+      message.textContent = "";
+
+      try {
+        const response = await fetch(buildUrl());
+        if (!response.ok) {
+          throw new Error("HTTP " + response.status);
+        }
+        const data = await response.json();
+        showWeather(data);
+      } catch (error) {
+        message.textContent = "Could not load the weather.";
+        console.error(error);
+      }
+    }
+
+    // Run when the page loads.
+    showSetup();
+    loadWeather();
+  </script>
+</body>
+</html>
